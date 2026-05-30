@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA Clutch Leaderboard — Starter Template</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #f8f9fb;
+    --surface: #fff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --accent: #3b82f6;
+    --gold: #d97706;
+  }
+  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem; max-width: 1100px; margin-inline: auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+  .sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: end; }
+  .filters label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  .filters select { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font-size: 0.9rem; min-width: 8rem; }
+  #status { padding: 0.6rem 0.9rem; border-radius: 6px; background: #fef3c7; color: #92400e; font-size: 0.88rem; margin-bottom: 1rem; }
+  #status.ready { background: #d1fae5; color: #065f46; }
+  #status.error  { background: #fee2e2; color: #991b1b; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  th, td { padding: 0.55rem 0.75rem; text-align: left; font-size: 0.88rem; border-bottom: 1px solid var(--border); }
+  th { background: #f3f4f6; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  td.num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: rgba(59,130,246,0.04); }
+  .rank { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .rank.top3 { color: var(--gold); font-weight: 700; }
+  .player { font-weight: 600; }
+  .team { color: var(--text-muted); font-size: 0.78rem; margin-left: 0.4rem; font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+
+<h1>NBA Clutch Leaderboard</h1>
+<p class="sub">Top performers in clutch situations across NBA history. Click any filter to re-query.</p>
+
+<div class="filters">
+  <label>Clutch Definition
+    <select id="filter-clutch-time"></select>
+  </label>
+  <label>Season Type
+    <select id="filter-season-type"></select>
+  </label>
+  <label>Season
+    <select id="filter-season"></select>
+  </label>
+  <label>Sort By
+    <select id="filter-stat">
+      <option value="PTS">Total Points</option>
+      <option value="AST">Total Assists</option>
+      <option value="REB">Total Rebounds</option>
+      <option value="STL">Total Steals</option>
+      <option value="BLK">Total Blocks</option>
+      <option value="PLUS_MINUS">Plus/Minus</option>
+      <option value="FG_PCT">FG%</option>
+      <option value="FG3_PCT">3P%</option>
+    </select>
+  </label>
+</div>
+
+<div id="status">Loading clutch database...</div>
+<table id="results">
+  <thead>
+    <tr><th>#</th><th>Player</th><th class="num">GP</th><th class="num">MIN</th>
+        <th class="num">PTS</th><th class="num">AST</th><th class="num">REB</th>
+        <th class="num">FG%</th><th class="num">3P%</th><th class="num">+/-</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<!-- sql.js: SQLite compiled to WebAssembly. ~1MB, loaded from cdnjs. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────────────
+// CONFIG — change DB_URL to where you host clutch.db.gz on GitHub Pages
+// e.g. 'https://aderoa.github.io/nba-clutch-data/data/clutch.db.gz'
+// ─────────────────────────────────────────────────────────────────
+const DB_URL = 'https://github.com/aderoa/nba-clutch-data/releases/latest/download/clutch.db.gz';
+
+const setStatus = (msg, cls = '') => {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = cls;
+};
+
+let db = null;
+
+async function loadDatabase() {
+  setStatus('Loading SQL engine (sql.js)...');
+  const SQL = await initSqlJs({
+    locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
+  });
+
+  setStatus('Downloading clutch database...');
+  const res = await fetch(DB_URL);
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${DB_URL}`);
+
+  // Browser auto-decompresses .gz if Content-Encoding header is right.
+  // For static GitHub Pages, you'd serve clutch.db without .gz, OR use
+  // DecompressionStream to inflate manually:
+  let buffer;
+  if (DB_URL.endsWith('.gz')) {
+    const ds = new DecompressionStream('gzip');
+    const decompressed = res.body.pipeThrough(ds);
+    buffer = await new Response(decompressed).arrayBuffer();
+  } else {
+    buffer = await res.arrayBuffer();
+  }
+
+  setStatus('Opening database...');
+  db = new SQL.Database(new Uint8Array(buffer));
+
+  const meta = db.exec("SELECT key, value FROM _meta")[0];
+  const metaMap = Object.fromEntries(meta.values);
+  const sizeMb = (buffer.byteLength / 1024 / 1024).toFixed(1);
+  setStatus(`✓ Loaded ${metaMap.total_rows} rows, built ${metaMap.built_at} (${sizeMb} MB)`, 'ready');
+  populateFilters();
+  runQuery();
+}
+
+function populateFilters() {
+  // Pull unique values for each filter from the DB itself
+  const fill = (id, sql, addAll = true) => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '';
+    if (addAll) sel.add(new Option('All', 'ALL'));
+    const r = db.exec(sql);
+    if (r.length) r[0].values.forEach(([v]) => sel.add(new Option(v, v)));
+    sel.addEventListener('change', runQuery);
+  };
+  fill('filter-clutch-time', 'SELECT DISTINCT CLUTCH_TIME FROM Player_Base ORDER BY CASE CLUTCH_TIME ' +
+       "WHEN 'Last 5 Minutes' THEN 1 WHEN 'Last 3 Minutes' THEN 2 WHEN 'Last 1 Minute' THEN 3 " +
+       "WHEN 'Last 30 Seconds' THEN 4 WHEN 'Last 10 Seconds' THEN 5 END", false);
+  fill('filter-season-type', 'SELECT DISTINCT SEASON_TYPE FROM Player_Base ORDER BY SEASON_TYPE');
+  fill('filter-season',      'SELECT DISTINCT SEASON FROM Player_Base ORDER BY SEASON DESC');
+  document.getElementById('filter-stat').addEventListener('change', runQuery);
+}
+
+function runQuery() {
+  if (!db) return;
+  const clutchTime = document.getElementById('filter-clutch-time').value;
+  const seasonType = document.getElementById('filter-season-type').value;
+  const season     = document.getElementById('filter-season').value;
+  const stat       = document.getElementById('filter-stat').value;
+
+  // Build WHERE
+  const wheres = [`CLUTCH_TIME = '${clutchTime.replace(/'/g, "''")}'`];
+  if (seasonType !== 'ALL') wheres.push(`SEASON_TYPE = '${seasonType.replace(/'/g, "''")}'`);
+  if (season !== 'ALL')     wheres.push(`SEASON = '${season.replace(/'/g, "''")}'`);
+
+  // For percentage stats we need to aggregate the underlying counts, not average percentages.
+  // For totals we just SUM.
+  const isPct = stat === 'FG_PCT' || stat === 'FG3_PCT';
+  const sortExpr = isPct
+    ? (stat === 'FG_PCT'  ? 'CAST(SUM(FGM) AS FLOAT) / NULLIF(SUM(FGA), 0)'
+                          : 'CAST(SUM(FG3M) AS FLOAT) / NULLIF(SUM(FG3A), 0)')
+    : `SUM(${stat})`;
+  const minAttempts = stat === 'FG_PCT' ? 'HAVING SUM(FGA) >= 50' :
+                      stat === 'FG3_PCT' ? 'HAVING SUM(FG3A) >= 25' : '';
+
+  const sql = `
+    SELECT
+      PLAYER_NAME,
+      MAX(TEAM_ABBREVIATION) AS TEAM,
+      SUM(GP) AS GP,
+      CAST(SUM(MIN) AS INTEGER) AS MIN_TOTAL,
+      SUM(PTS) AS PTS,
+      SUM(AST) AS AST,
+      SUM(REB) AS REB,
+      CAST(SUM(FGM) AS FLOAT) / NULLIF(SUM(FGA), 0) AS FG_PCT_AGG,
+      CAST(SUM(FG3M) AS FLOAT) / NULLIF(SUM(FG3A), 0) AS FG3_PCT_AGG,
+      SUM(PLUS_MINUS) AS PLUS_MINUS,
+      ${sortExpr} AS SORT_VAL
+    FROM Player_Base
+    WHERE ${wheres.join(' AND ')}
+    GROUP BY PLAYER_ID, PLAYER_NAME
+    ${minAttempts}
+    ORDER BY SORT_VAL DESC
+    LIMIT 50
+  `;
+
+  const t0 = performance.now();
+  let res;
+  try { res = db.exec(sql); }
+  catch (e) { setStatus('Query error: ' + e.message, 'error'); return; }
+  const elapsed = (performance.now() - t0).toFixed(0);
+
+  const tbody = document.querySelector('#results tbody');
+  tbody.innerHTML = '';
+  if (!res.length) {
+    setStatus(`No results for that filter combination`, 'ready');
+    return;
+  }
+  res[0].values.forEach((row, i) => {
+    const [name, team, gp, min_, pts, ast, reb, fgp, fg3p, pm] = row;
+    const rankCls = i < 3 ? 'rank top3' : 'rank';
+    const fmt = (v, d = 0) => v == null ? '—' : Number(v).toFixed(d);
+    const fmtPct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+    tbody.innerHTML += `
+      <tr>
+        <td class="${rankCls}">${i + 1}</td>
+        <td><span class="player">${name}</span><span class="team">${team || ''}</span></td>
+        <td class="num">${fmt(gp)}</td>
+        <td class="num">${fmt(min_)}</td>
+        <td class="num">${fmt(pts)}</td>
+        <td class="num">${fmt(ast)}</td>
+        <td class="num">${fmt(reb)}</td>
+        <td class="num">${fmtPct(fgp)}</td>
+        <td class="num">${fmtPct(fg3p)}</td>
+        <td class="num">${fmt(pm)}</td>
+      </tr>`;
+  });
+  setStatus(`✓ ${res[0].values.length} players · query ran in ${elapsed}ms`, 'ready');
+}
+
+loadDatabase().catch(err => {
+  console.error(err);
+  setStatus('Failed to load database: ' + err.message, 'error');
+});
+</script>
+
+</body>
+</html>
