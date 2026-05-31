@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NBA Clutch Leaderboard — Starter Template</title>
+<title>NBA Clutch Leaderboard</title>
 <style>
   * { box-sizing: border-box; }
   :root {
@@ -13,36 +13,55 @@
     --text: #1f2937;
     --text-muted: #6b7280;
     --accent: #3b82f6;
+    --accent-dim: rgba(59,130,246,0.08);
     --gold: #d97706;
+    --green: #059669;
+    --red: #dc2626;
   }
-  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem; max-width: 1100px; margin-inline: auto; }
+  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem; max-width: 1280px; margin-inline: auto; }
   h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
   .sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
-  .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: end; }
-  .filters label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
-  .filters select { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font-size: 0.9rem; min-width: 8rem; }
-  #status { padding: 0.6rem 0.9rem; border-radius: 6px; background: #fef3c7; color: #92400e; font-size: 0.88rem; margin-bottom: 1rem; }
+  .filters { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: end; }
+  .filters label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  .filters select, .filters input { padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font-size: 0.88rem; min-width: 7rem; font-family: inherit; }
+  .filters input[type=number] { width: 5rem; min-width: 5rem; }
+  #status { padding: 0.55rem 0.85rem; border-radius: 6px; background: #fef3c7; color: #92400e; font-size: 0.85rem; margin-bottom: 1rem; }
   #status.ready { background: #d1fae5; color: #065f46; }
   #status.error  { background: #fee2e2; color: #991b1b; }
   table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  th, td { padding: 0.55rem 0.75rem; text-align: left; font-size: 0.88rem; border-bottom: 1px solid var(--border); }
-  th { background: #f3f4f6; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
-  td.num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+  th, td { padding: 0.5rem 0.65rem; text-align: left; font-size: 0.86rem; border-bottom: 1px solid var(--border); }
+  th { background: #f3f4f6; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); white-space: nowrap; }
+  th.num, td.num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+  th.sort { color: var(--accent); }
   tr:last-child td { border-bottom: none; }
-  tr:hover { background: rgba(59,130,246,0.04); }
+  tr:hover { background: var(--accent-dim); }
   .rank { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
   .rank.top3 { color: var(--gold); font-weight: 700; }
   .player { font-weight: 600; }
-  .team { color: var(--text-muted); font-size: 0.78rem; margin-left: 0.4rem; font-family: 'JetBrains Mono', monospace; }
+  .team { color: var(--text-muted); font-size: 0.74rem; margin-left: 0.4rem; font-family: 'JetBrains Mono', monospace; }
+  .footer-note { margin-top: 0.8rem; color: var(--text-muted); font-size: 0.74rem; line-height: 1.5; }
+  .footer-note kbd { background: #e5e7eb; padding: 0.05rem 0.35rem; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
 </style>
 </head>
 <body>
 
 <h1>NBA Clutch Leaderboard</h1>
-<p class="sub">Top performers in clutch situations across NBA history. Click any filter to re-query.</p>
+<p class="sub">Top performers in clutch situations across NBA history (1996-97 to present). All 5 measure types, both regular season and playoffs.</p>
 
 <div class="filters">
-  <label>Clutch Definition
+  <label>Measure
+    <select id="filter-measure">
+      <option value="Base">Base (PPG/RPG/AST/etc.)</option>
+      <option value="Advanced">Advanced (Ratings)</option>
+      <option value="Misc">Misc (Situational)</option>
+      <option value="Scoring">Scoring (Shot mix)</option>
+      <option value="Usage">Usage (% of team)</option>
+    </select>
+  </label>
+  <label>Sort By
+    <select id="filter-stat"></select>
+  </label>
+  <label>Clutch
     <select id="filter-clutch-time"></select>
   </label>
   <label>Season Type
@@ -51,38 +70,125 @@
   <label>Season
     <select id="filter-season"></select>
   </label>
-  <label>Sort By
-    <select id="filter-stat">
-      <option value="PTS">Total Points</option>
-      <option value="AST">Total Assists</option>
-      <option value="REB">Total Rebounds</option>
-      <option value="STL">Total Steals</option>
-      <option value="BLK">Total Blocks</option>
-      <option value="PLUS_MINUS">Plus/Minus</option>
-      <option value="FG_PCT">FG%</option>
-      <option value="FG3_PCT">3P%</option>
-    </select>
+  <label>Min GP
+    <input id="filter-min-gp" type="number" min="0" value="0" step="5">
+  </label>
+  <label>Limit
+    <input id="filter-limit" type="number" min="10" max="500" value="50" step="10">
   </label>
 </div>
 
 <div id="status">Loading clutch database...</div>
 <table id="results">
-  <thead>
-    <tr><th>#</th><th>Player</th><th class="num">GP</th><th class="num">MIN</th>
-        <th class="num">PTS</th><th class="num">AST</th><th class="num">REB</th>
-        <th class="num">FG%</th><th class="num">3P%</th><th class="num">+/-</th></tr>
-  </thead>
+  <thead><tr id="head-row"></tr></thead>
   <tbody></tbody>
 </table>
 
-<!-- sql.js: SQLite compiled to WebAssembly. ~1MB, loaded from cdnjs. -->
+<p class="footer-note">
+  All stats are <strong>totals</strong> across the filtered slice (e.g., total clutch points for that season + season type + clutch definition).
+  Percentage stats are computed from the aggregated counting stats and exclude players below a minimum-attempts threshold.
+  Click any row's player name in a future update to drill into their full clutch history.
+</p>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.min.js"></script>
 <script>
-// ─────────────────────────────────────────────────────────────────
-// CONFIG — change DB_URL to where you host clutch.db.gz on GitHub Pages
-// e.g. 'https://aderoa.github.io/nba-clutch-data/data/clutch.db.gz'
-// ─────────────────────────────────────────────────────────────────
 const DB_URL = 'https://aderoa.github.io/nba-clutch-data/clutch.db.gz';
+
+// ─────────────────────────────────────────────────────────────────
+// STAT CATALOG — what each measure type exposes
+// "label" shows in the dropdown; "col" is the SQL column name;
+// "agg" is how to aggregate ('sum' counts, 'rate' = SUM(num)/SUM(den)
+// with min-attempts threshold; 'avg' for already-averaged values).
+// "display" controls how to render the column header and value.
+// ─────────────────────────────────────────────────────────────────
+const STATS = {
+  Base: {
+    table: 'Player_Base',
+    // Stats in fixed columns regardless of sort
+    columns: [
+      { col: 'GP',         label: 'GP',  agg: 'sum',  fmt: 'int' },
+      { col: 'MIN',        label: 'MIN', agg: 'sum',  fmt: 'int' },
+      { col: 'PTS',        label: 'PTS', agg: 'sum',  fmt: 'int' },
+      { col: 'REB',        label: 'REB', agg: 'sum',  fmt: 'int' },
+      { col: 'AST',        label: 'AST', agg: 'sum',  fmt: 'int' },
+      { col: 'STL',        label: 'STL', agg: 'sum',  fmt: 'int' },
+      { col: 'BLK',        label: 'BLK', agg: 'sum',  fmt: 'int' },
+      { col: 'TOV',        label: 'TOV', agg: 'sum',  fmt: 'int' },
+      { col: 'FG_PCT',     label: 'FG%',  agg: 'rate', num: 'FGM',  den: 'FGA',  minAtt: 50, fmt: 'pct' },
+      { col: 'FG3_PCT',    label: '3P%',  agg: 'rate', num: 'FG3M', den: 'FG3A', minAtt: 25, fmt: 'pct' },
+      { col: 'FT_PCT',     label: 'FT%',  agg: 'rate', num: 'FTM',  den: 'FTA',  minAtt: 25, fmt: 'pct' },
+      { col: 'PLUS_MINUS', label: '+/-', agg: 'sum',  fmt: 'pm' },
+    ],
+  },
+  Advanced: {
+    table: 'Player_Advanced',
+    columns: [
+      { col: 'GP',          label: 'GP',     agg: 'sum',  fmt: 'int' },
+      { col: 'MIN',         label: 'MIN',    agg: 'sum',  fmt: 'int' },
+      { col: 'OFF_RATING',  label: 'ORtg',   agg: 'avg',  fmt: 'dec1' },
+      { col: 'DEF_RATING',  label: 'DRtg',   agg: 'avg',  fmt: 'dec1' },
+      { col: 'NET_RATING',  label: 'NetRtg', agg: 'avg',  fmt: 'dec1pm' },
+      { col: 'TS_PCT',      label: 'TS%',    agg: 'avg',  fmt: 'pct' },
+      { col: 'EFG_PCT',     label: 'eFG%',   agg: 'avg',  fmt: 'pct' },
+      { col: 'USG_PCT',     label: 'USG%',   agg: 'avg',  fmt: 'pct' },
+      { col: 'AST_PCT',     label: 'AST%',   agg: 'avg',  fmt: 'pct' },
+      { col: 'REB_PCT',     label: 'REB%',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PIE',         label: 'PIE',    agg: 'avg',  fmt: 'pct' },
+      { col: 'PACE',        label: 'PACE',   agg: 'avg',  fmt: 'dec1' },
+    ],
+  },
+  Misc: {
+    table: 'Player_Misc',
+    columns: [
+      { col: 'GP',                  label: 'GP',         agg: 'sum',  fmt: 'int' },
+      { col: 'MIN',                 label: 'MIN',        agg: 'sum',  fmt: 'int' },
+      { col: 'PTS_OFF_TOV',         label: 'PtsOffTOV',  agg: 'sum',  fmt: 'int' },
+      { col: 'PTS_2ND_CHANCE',      label: '2ndChPts',   agg: 'sum',  fmt: 'int' },
+      { col: 'PTS_FB',              label: 'FBPts',      agg: 'sum',  fmt: 'int' },
+      { col: 'PTS_PAINT',           label: 'PaintPts',   agg: 'sum',  fmt: 'int' },
+      { col: 'OPP_PTS_OFF_TOV',     label: 'OppPtsOff',  agg: 'sum',  fmt: 'int' },
+      { col: 'OPP_PTS_2ND_CHANCE',  label: 'Opp2ndCh',   agg: 'sum',  fmt: 'int' },
+      { col: 'OPP_PTS_FB',          label: 'OppFB',      agg: 'sum',  fmt: 'int' },
+      { col: 'OPP_PTS_PAINT',       label: 'OppPaint',   agg: 'sum',  fmt: 'int' },
+      { col: 'BLK',                 label: 'BLK',        agg: 'sum',  fmt: 'int' },
+      { col: 'BLKA',                label: 'BLKA',       agg: 'sum',  fmt: 'int' },
+    ],
+  },
+  Scoring: {
+    table: 'Player_Scoring',
+    columns: [
+      { col: 'GP',              label: 'GP',         agg: 'sum',  fmt: 'int' },
+      { col: 'MIN',             label: 'MIN',        agg: 'sum',  fmt: 'int' },
+      { col: 'PCT_FGA_2PT',     label: '%FGA_2',     agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_FGA_3PT',     label: '%FGA_3',     agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_PTS_2PT',     label: '%Pts_2',     agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_PTS_2PT_MR',  label: '%Pts_MR',    agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_PTS_3PT',     label: '%Pts_3',     agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_PTS_FB',      label: '%Pts_FB',    agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_PTS_FT',      label: '%Pts_FT',    agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_PTS_PAINT',   label: '%Pts_Paint', agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_AST_2PM',     label: '%Ast_2PM',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_AST_3PM',     label: '%Ast_3PM',   agg: 'avg',  fmt: 'pct' },
+    ],
+  },
+  Usage: {
+    table: 'Player_Usage',
+    columns: [
+      { col: 'GP',       label: 'GP',     agg: 'sum',  fmt: 'int' },
+      { col: 'MIN',      label: 'MIN',    agg: 'sum',  fmt: 'int' },
+      { col: 'USG_PCT',  label: 'USG%',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_FGM',  label: '%FGM',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_FGA',  label: '%FGA',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_FG3M', label: '%FG3M',  agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_FG3A', label: '%FG3A',  agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_PTS',  label: '%PTS',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_REB',  label: '%REB',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_AST',  label: '%AST',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_STL',  label: '%STL',   agg: 'avg',  fmt: 'pct' },
+      { col: 'PCT_TOV',  label: '%TOV',   agg: 'avg',  fmt: 'pct' },
+    ],
+  },
+};
 
 const setStatus = (msg, cls = '') => {
   const el = document.getElementById('status');
@@ -93,23 +199,19 @@ const setStatus = (msg, cls = '') => {
 let db = null;
 
 async function loadDatabase() {
-  setStatus('Loading SQL engine (sql.js)...');
+  setStatus('Loading SQL engine...');
   const SQL = await initSqlJs({
     locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`
   });
 
-  setStatus('Downloading clutch database...');
+  setStatus('Downloading clutch database (~36 MB, cached after first visit)...');
   const res = await fetch(DB_URL);
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${DB_URL}`);
 
-  // Browser auto-decompresses .gz if Content-Encoding header is right.
-  // For static GitHub Pages, you'd serve clutch.db without .gz, OR use
-  // DecompressionStream to inflate manually:
   let buffer;
   if (DB_URL.endsWith('.gz')) {
     const ds = new DecompressionStream('gzip');
-    const decompressed = res.body.pipeThrough(ds);
-    buffer = await new Response(decompressed).arrayBuffer();
+    buffer = await new Response(res.body.pipeThrough(ds)).arrayBuffer();
   } else {
     buffer = await res.arrayBuffer();
   }
@@ -120,13 +222,13 @@ async function loadDatabase() {
   const meta = db.exec("SELECT key, value FROM _meta")[0];
   const metaMap = Object.fromEntries(meta.values);
   const sizeMb = (buffer.byteLength / 1024 / 1024).toFixed(1);
-  setStatus(`✓ Loaded ${metaMap.total_rows} rows, built ${metaMap.built_at} (${sizeMb} MB)`, 'ready');
-  populateFilters();
-  runQuery();
+  setStatus(`✓ Loaded ${Number(metaMap.total_rows).toLocaleString()} rows · built ${metaMap.built_at} · ${sizeMb} MB`, 'ready');
+
+  populateStaticFilters();
+  onMeasureChange();  // populates the Sort By dropdown for the default measure
 }
 
-function populateFilters() {
-  // Pull unique values for each filter from the DB itself
+function populateStaticFilters() {
   const fill = (id, sql, addAll = true) => {
     const sel = document.getElementById(id);
     sel.innerHTML = '';
@@ -135,89 +237,147 @@ function populateFilters() {
     if (r.length) r[0].values.forEach(([v]) => sel.add(new Option(v, v)));
     sel.addEventListener('change', runQuery);
   };
-  fill('filter-clutch-time', 'SELECT DISTINCT CLUTCH_TIME FROM Player_Base ORDER BY CASE CLUTCH_TIME ' +
+  fill('filter-clutch-time', "SELECT DISTINCT CLUTCH_TIME FROM Player_Base ORDER BY CASE CLUTCH_TIME " +
        "WHEN 'Last 5 Minutes' THEN 1 WHEN 'Last 3 Minutes' THEN 2 WHEN 'Last 1 Minute' THEN 3 " +
        "WHEN 'Last 30 Seconds' THEN 4 WHEN 'Last 10 Seconds' THEN 5 END", false);
   fill('filter-season-type', 'SELECT DISTINCT SEASON_TYPE FROM Player_Base ORDER BY SEASON_TYPE');
   fill('filter-season',      'SELECT DISTINCT SEASON FROM Player_Base ORDER BY SEASON DESC');
-  document.getElementById('filter-stat').addEventListener('change', runQuery);
+
+  document.getElementById('filter-measure').addEventListener('change', onMeasureChange);
+  document.getElementById('filter-min-gp').addEventListener('change', runQuery);
+  document.getElementById('filter-limit').addEventListener('change', runQuery);
+}
+
+// When measure changes, the Sort By dropdown's options change too
+function onMeasureChange() {
+  const measure = document.getElementById('filter-measure').value;
+  const cfg = STATS[measure];
+  const sel = document.getElementById('filter-stat');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  // Show sort options matching what's in the table — skip 'GP' and 'MIN' which
+  // are universal context but rarely interesting sorts
+  cfg.columns
+    .filter(c => !['GP', 'MIN'].includes(c.col) || cfg.columns.length <= 3)
+    .forEach(c => sel.add(new Option(c.label, c.col)));
+  // Restore previous selection if it still exists, else pick the most "marquee" stat
+  const marquee = { Base: 'PTS', Advanced: 'NET_RATING', Misc: 'PTS_PAINT', Scoring: 'PCT_PTS_3PT', Usage: 'USG_PCT' };
+  sel.value = [...sel.options].some(o => o.value === prev) ? prev : marquee[measure];
+  sel.removeEventListener('change', runQuery);  // avoid double-bind
+  sel.addEventListener('change', runQuery);
+  rebuildTableHeader();
+  runQuery();
+}
+
+function rebuildTableHeader() {
+  const measure = document.getElementById('filter-measure').value;
+  const sortCol = document.getElementById('filter-stat').value;
+  const cfg = STATS[measure];
+  const row = document.getElementById('head-row');
+  const cols = cfg.columns.map(c =>
+    `<th class="num${c.col === sortCol ? ' sort' : ''}" title="${c.col}">${c.label}</th>`
+  ).join('');
+  row.innerHTML = `<th>#</th><th>Player</th>${cols}`;
 }
 
 function runQuery() {
   if (!db) return;
+  const measure = document.getElementById('filter-measure').value;
+  const cfg = STATS[measure];
+  const sortCol = document.getElementById('filter-stat').value;
   const clutchTime = document.getElementById('filter-clutch-time').value;
   const seasonType = document.getElementById('filter-season-type').value;
   const season     = document.getElementById('filter-season').value;
-  const stat       = document.getElementById('filter-stat').value;
+  const minGP      = parseInt(document.getElementById('filter-min-gp').value) || 0;
+  const limit      = Math.min(500, Math.max(10, parseInt(document.getElementById('filter-limit').value) || 50));
 
-  // Build WHERE
+  rebuildTableHeader();
+
+  // WHERE clause
   const wheres = [`CLUTCH_TIME = '${clutchTime.replace(/'/g, "''")}'`];
   if (seasonType !== 'ALL') wheres.push(`SEASON_TYPE = '${seasonType.replace(/'/g, "''")}'`);
   if (season !== 'ALL')     wheres.push(`SEASON = '${season.replace(/'/g, "''")}'`);
 
-  // For percentage stats we need to aggregate the underlying counts, not average percentages.
-  // For totals we just SUM.
-  const isPct = stat === 'FG_PCT' || stat === 'FG3_PCT';
-  const sortExpr = isPct
-    ? (stat === 'FG_PCT'  ? 'CAST(SUM(FGM) AS FLOAT) / NULLIF(SUM(FGA), 0)'
-                          : 'CAST(SUM(FG3M) AS FLOAT) / NULLIF(SUM(FG3A), 0)')
-    : `SUM(${stat})`;
-  const minAttempts = stat === 'FG_PCT' ? 'HAVING SUM(FGA) >= 50' :
-                      stat === 'FG3_PCT' ? 'HAVING SUM(FG3A) >= 25' : '';
+  // Build SELECT — one expression per column based on its agg type
+  const selectExprs = cfg.columns.map(c => {
+    if (c.agg === 'sum') return `SUM(${c.col}) AS ${c.col}`;
+    if (c.agg === 'avg') {
+      // Minutes-weighted average, more accurate than plain AVG for rate stats
+      return `CAST(SUM(${c.col} * MIN) AS FLOAT) / NULLIF(SUM(MIN), 0) AS ${c.col}`;
+    }
+    if (c.agg === 'rate') {
+      return `CAST(SUM(${c.num}) AS FLOAT) / NULLIF(SUM(${c.den}), 0) AS ${c.col}`;
+    }
+    return c.col;
+  });
+
+  // HAVING for min-attempts if sort is a rate stat
+  const sortColCfg = cfg.columns.find(c => c.col === sortCol);
+  const havings = [`SUM(GP) >= ${minGP}`];
+  if (sortColCfg && sortColCfg.agg === 'rate' && sortColCfg.minAtt) {
+    havings.push(`SUM(${sortColCfg.den}) >= ${sortColCfg.minAtt}`);
+  }
+
+  // ORDER BY — same expression family as the SELECT
+  const sortExpr = sortColCfg.agg === 'sum' ? `SUM(${sortCol})`
+    : sortColCfg.agg === 'rate' ? `CAST(SUM(${sortColCfg.num}) AS FLOAT) / NULLIF(SUM(${sortColCfg.den}), 0)`
+    : `CAST(SUM(${sortCol} * MIN) AS FLOAT) / NULLIF(SUM(MIN), 0)`;
 
   const sql = `
     SELECT
       PLAYER_NAME,
       MAX(TEAM_ABBREVIATION) AS TEAM,
-      SUM(GP) AS GP,
-      CAST(SUM(MIN) AS INTEGER) AS MIN_TOTAL,
-      SUM(PTS) AS PTS,
-      SUM(AST) AS AST,
-      SUM(REB) AS REB,
-      CAST(SUM(FGM) AS FLOAT) / NULLIF(SUM(FGA), 0) AS FG_PCT_AGG,
-      CAST(SUM(FG3M) AS FLOAT) / NULLIF(SUM(FG3A), 0) AS FG3_PCT_AGG,
-      SUM(PLUS_MINUS) AS PLUS_MINUS,
-      ${sortExpr} AS SORT_VAL
-    FROM Player_Base
+      ${selectExprs.join(',\n      ')}
+    FROM ${cfg.table}
     WHERE ${wheres.join(' AND ')}
     GROUP BY PLAYER_ID, PLAYER_NAME
-    ${minAttempts}
-    ORDER BY SORT_VAL DESC
-    LIMIT 50
+    HAVING ${havings.join(' AND ')}
+    ORDER BY ${sortExpr} DESC
+    LIMIT ${limit}
   `;
 
   const t0 = performance.now();
-  let res;
-  try { res = db.exec(sql); }
-  catch (e) { setStatus('Query error: ' + e.message, 'error'); return; }
+  let r;
+  try { r = db.exec(sql); }
+  catch (e) {
+    setStatus(`Query error on ${cfg.table}: ${e.message}`, 'error');
+    console.error(sql);
+    return;
+  }
   const elapsed = (performance.now() - t0).toFixed(0);
 
   const tbody = document.querySelector('#results tbody');
   tbody.innerHTML = '';
-  if (!res.length) {
-    setStatus(`No results for that filter combination`, 'ready');
+  if (!r.length) {
+    setStatus(`No results — try loosening filters (lower Min GP, choose All for season filters).`, 'ready');
     return;
   }
-  res[0].values.forEach((row, i) => {
-    const [name, team, gp, min_, pts, ast, reb, fgp, fg3p, pm] = row;
+
+  const fmtters = {
+    int:    v => v == null ? '—' : Math.round(Number(v)).toLocaleString(),
+    dec1:   v => v == null ? '—' : Number(v).toFixed(1),
+    dec2:   v => v == null ? '—' : Number(v).toFixed(2),
+    pct:    v => v == null ? '—' : (Number(v) * (Math.abs(v) > 1.5 ? 1 : 100)).toFixed(1) + '%',
+    pm:     v => v == null ? '—' : (v > 0 ? '+' : '') + Math.round(Number(v)),
+    dec1pm: v => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(1),
+  };
+
+  r[0].values.forEach((row, i) => {
+    const [name, team, ...stats] = row;
     const rankCls = i < 3 ? 'rank top3' : 'rank';
-    const fmt = (v, d = 0) => v == null ? '—' : Number(v).toFixed(d);
-    const fmtPct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+    const cells = stats.map((v, idx) => {
+      const c = cfg.columns[idx];
+      const formatted = (fmtters[c.fmt] || fmtters.dec1)(v);
+      return `<td class="num">${formatted}</td>`;
+    }).join('');
     tbody.innerHTML += `
       <tr>
         <td class="${rankCls}">${i + 1}</td>
         <td><span class="player">${name}</span><span class="team">${team || ''}</span></td>
-        <td class="num">${fmt(gp)}</td>
-        <td class="num">${fmt(min_)}</td>
-        <td class="num">${fmt(pts)}</td>
-        <td class="num">${fmt(ast)}</td>
-        <td class="num">${fmt(reb)}</td>
-        <td class="num">${fmtPct(fgp)}</td>
-        <td class="num">${fmtPct(fg3p)}</td>
-        <td class="num">${fmt(pm)}</td>
+        ${cells}
       </tr>`;
   });
-  setStatus(`✓ ${res[0].values.length} players · query ran in ${elapsed}ms`, 'ready');
+  setStatus(`✓ ${r[0].values.length} players · ${measure} measure · sort: ${sortColCfg.label} · query: ${elapsed}ms`, 'ready');
 }
 
 loadDatabase().catch(err => {
